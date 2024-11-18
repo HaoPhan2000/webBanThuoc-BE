@@ -1,0 +1,33 @@
+{
+  "name": "web-ban-thuoc-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon ./server.js"
+  },
+  "author": "HaoPhan",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.1",
+    "express-useragent": "^1.0.15",
+    "http-status-codes": "^2.3.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.4",
+    "nodemailer": "^6.9.16",
+    "nodemon": "^3.1.7",
+    "otp-generator": "^4.0.1",
+    "redis": "^4.7.0",
+    "sequelize": "^6.37.5",
+    "uuid": "^11.0.3",
+    "web-ban-thuoc-server": "file:",
+    "winston": "^3.17.0"
+  }
+}
