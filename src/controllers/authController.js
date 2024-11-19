@@ -1,5 +1,6 @@
 const authService = require("../services/authService");
 const { StatusCodes } = require("http-status-codes");
+const logErrorDetails=require("../utils/errorLoggerFunction")
 const otpService = require("../services/otpService");
 const sendEmailService = require("../services/EmailService");
 const constants = require("../utils/constants");
@@ -72,8 +73,8 @@ const authController = {
   },
   refreshToken: async (req, res, next) => {
     try {
-      const refreshToken = req.cookies.refreshToken;
-      const service = await refreshTokenService(refreshToken);
+      const refreshToken = req?.cookies?.refreshToken;
+      const service = await authService.refreshToken(refreshToken);
       cookie.setCookie(
         res,
         constants.TEXT.accessTokenName,
@@ -90,9 +91,16 @@ const authController = {
         .status(StatusCodes.OK)
         .json({ message: "Token refresh successful" });
     } catch (error) {
-      console.log(error);
-      cookie.clearCookie(res, constants.TEXT.accessTokenName);
-      cookie.clearCookie(res, constants.TEXT.refreshTokenName);
+      try {
+        cookie.clearCookie(res, constants.TEXT.accessTokenName);
+      } catch (error) {
+        logErrorDetails("clearCookie",req)
+      }
+      try {
+        cookie.clearCookie(res, constants.TEXT.refreshTokenName);
+      } catch (error) {
+        logErrorDetails("clearCookie",req)
+      }
       next(error);
     }
   },
@@ -135,27 +143,31 @@ const authController = {
   //     res.status(400).json(error);
   //   }
   // },
-  logout: async (req, res) => {
+  logout: async (req, res, next) => {
     try {
-      await User.findByIdAndUpdate(req?.user?.id, { refreshToken: null });
-
-
-
-
-
-      cookie.clearCookie(res, constants.TEXT.accessTokenName);
-      cookie.clearCookie(res, constants.TEXT.refreshTokenName);
+      await authService.logout(req);
       res.status(StatusCodes.OK).json("Logout successful");
     } catch (error) {
-      res.status(400).json(error);
+      next(error);
+    } finally {
+      try {
+        cookie.clearCookie(res, constants.TEXT.accessTokenName);
+      } catch (error) {
+        logErrorDetails("clearCookie",req)
+      }
+      try {
+        cookie.clearCookie(res, constants.TEXT.refreshTokenName);
+      } catch (error) {
+        logErrorDetails("clearCookie",req)
+      }
     }
   },
-  // account: async (req, res) => {
-  //   try {
-  //     res.status(200).json(req.user);
-  //   } catch (error) {
-  //     res.status(401).json(error);
-  //   }
-  // },
+  account: async (req, res) => {
+    try {
+      res.status(StatusCodes.OK).json(req.user);
+    } catch (error) {
+      res.status(StatusCodes.UNAUTHORIZED).json(error);
+    }
+  },
 };
 module.exports = authController;

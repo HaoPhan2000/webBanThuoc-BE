@@ -121,7 +121,7 @@ const authService = {
         where: { id: payload.id },
       });
       if (!user) {
-        throw new customError(StatusCodes.UNAUTHORIZED, "Invalid token");
+        throw new customError(StatusCodes.UNAUTHORIZED, "User not found");
       }
       const sessions = JSON.parse(user.session || "[]");
 
@@ -129,7 +129,7 @@ const authService = {
         (item) => item.idDevice === payload.idDevice
       );
       if (indexIdDevice === -1) {
-        throw new customError(StatusCodes.UNAUTHORIZED, "Invalid token");
+        throw new customError(StatusCodes.UNAUTHORIZED, "Device not found in sessions");
       }
 
       const newPayload = {
@@ -197,5 +197,24 @@ const authService = {
   //     throw error;
   //   }
   // },
+  logout: async (req) => {
+    const user = await User.findOne({
+      where: { id: req?.user?.id },
+    });
+    if (!user) {
+      throw new customError(StatusCodes.UNAUTHORIZED, "User not found");
+    }
+    const sessions = JSON.parse(user.session || "[]");
+
+    const indexIdDevice = sessions.findIndex(
+      (item) => item.idDevice === req?.user?.idDevice
+    );
+    if (indexIdDevice === -1) {
+      throw new customError(StatusCodes.UNAUTHORIZED, "Device not found in sessions");
+    }
+    sessions.splice(indexIdDevice, 1);
+
+    await user.update({ session: sessions });
+  },
 };
 module.exports = authService;
