@@ -10,14 +10,14 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const saltRounds = 10;
 const authService = {
-  register: async (dataUser) => {
+  register: async ({ email }) => {
     try {
       const user = await User.findOne({
-        where: { email: dataUser.email },
+        where: { email },
       });
       if (user) {
         throw new customError(
-          StatusCodes.UNPROCESSABLE_ENTITY,
+          StatusCodes.CONFLICT,
           "Email already exists"
         );
       }
@@ -89,7 +89,6 @@ const authService = {
 
       sessions.push({
         idDevice: uniqueId,
-        accessToken,
         refreshToken,
       });
       await user.update({ session: sessions });
@@ -114,14 +113,14 @@ const authService = {
   refreshToken: async (refreshToken) => {
     try {
       if (!refreshToken) {
-        throw new customError(StatusCodes.UNAUTHORIZED, "Invalid token");
+        throw new customError(StatusCodes.BAD_REQUEST, "Invalid token");
       }
       const payload = jwt.verify(refreshToken, env.Private_KeyRefreshToken);
       const user = await User.findOne({
         where: { id: payload.id },
       });
       if (!user) {
-        throw new customError(StatusCodes.UNAUTHORIZED, "User not found");
+        throw new customError(StatusCodes.BAD_REQUEST, "User not found");
       }
       const sessions = JSON.parse(user.session || "[]");
 
@@ -129,7 +128,10 @@ const authService = {
         (item) => item.idDevice === payload.idDevice
       );
       if (indexIdDevice === -1) {
-        throw new customError(StatusCodes.UNAUTHORIZED, "Device not found in sessions");
+        throw new customError(
+          StatusCodes.BAD_REQUEST,
+          "Device not found in sessions"
+        );
       }
 
       const newPayload = {
@@ -151,7 +153,6 @@ const authService = {
       );
       sessions[indexIdDevice] = {
         idDevice: payload.idDevice,
-        accessToken: newAccessToken,
         refreshToken: newRefreshToken,
       };
       await user.update({ session: sessions });
@@ -160,49 +161,48 @@ const authService = {
       throw error;
     }
   },
-  // forgotPassword : async (customerData) => {
-  //   try {
-  //     const user = await User.findOne({ email: customerData.email });
-  //     if (!user) {
-  //       throw new CustomMessage("Không tìm thấy địa chỉ email");
-  //     }
-  //     const secret = process.env.Private_KeyResetPassword + user.password;
-  //     const payload = {
-  //       id: user._id,
-  //       email: user.email,
-  //     };
-  //     const token = jwt.sign(payload, secret, {
-  //       expiresIn: process.env.Time_JwtResetPassword,
-  //     });
-  //     const link = `${process.env.Domain}/reset-password?user_id=${user._id}&token=${token}`;
-  //     return link;
-  //   } catch (error) {
-  //     throw error;
-  //   }
-  // },
-  // resetPassword : async (dataUser) => {
-  //   const { user_id, token, password } = dataUser;
-  //   try {
-  //     const user = await User.findById(user_id);
-  //     if (!user) {
-  //       throw new CustomMessage("Không tìm thấy user");
-  //     }
-  //     const secret = process.env.Private_KeyResetPassword + user.password;
-  //     const payload = jwt.verify(token, secret);
-  //     const hashPassWord = await bcrypt.hash(password, saltRounds);
-  //     await User.findByIdAndUpdate(payload.id, { password: hashPassWord });
-
-  //     return new CustomMessage("Đặt lại mật khẩu thành công");
-  //   } catch (error) {
-  //     throw error;
-  //   }
-  // },
+  forgotPassword: async ({ email }) => {
+    try {
+      const user = await User.findOne({
+        where: { email },
+      });
+      if (!user) {
+        throw new customError(StatusCodes.BAD_REQUEST, "User not found");
+      }
+      const secret = env.Private_KeyResetPassword + user.passWord;
+      const payload = {
+        id: user.id,
+        email: user.email,
+      };
+      const token = jwt.sign(payload, secret, {
+        expiresIn: env.Time_JwtResetPassword,
+      });
+      const link = `${env.Domain}/reset-password?user_id=${user._id}&token=${token}`;
+      return link;
+    } catch (error) {
+      throw error;
+    }
+  },
+  resetPassword: async ({ user_id, token, password }) => {
+    try {
+      const user = await User.findById(user_id);
+      if (!user) {
+        throw new customError(StatusCodes.BAD_REQUEST, "User not found");
+      }
+      const secret = process.env.Private_KeyResetPassword + user.password;
+      const payload = jwt.verify(token, secret);
+      const hashPassWord = await bcrypt.hash(password, saltRounds);
+      await user.update({ passWord: hashPassWord });
+    } catch (error) {
+      throw error;
+    }
+  },
   logout: async (req) => {
     const user = await User.findOne({
       where: { id: req?.user?.id },
     });
     if (!user) {
-      throw new customError(StatusCodes.UNAUTHORIZED, "User not found");
+      throw new customError(StatusCodes.BAD_REQUEST, "User not found");
     }
     const sessions = JSON.parse(user.session || "[]");
 
@@ -210,7 +210,10 @@ const authService = {
       (item) => item.idDevice === req?.user?.idDevice
     );
     if (indexIdDevice === -1) {
-      throw new customError(StatusCodes.UNAUTHORIZED, "Device not found in sessions");
+      throw new customError(
+        StatusCodes.BAD_REQUEST,
+        "Device not found in sessions"
+      );
     }
     sessions.splice(indexIdDevice, 1);
 

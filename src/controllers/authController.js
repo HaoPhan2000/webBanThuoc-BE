@@ -1,6 +1,6 @@
 const authService = require("../services/authService");
 const { StatusCodes } = require("http-status-codes");
-const logErrorDetails=require("../utils/errorLoggerFunction")
+const logErrorDetails = require("../utils/errorLoggerFunction");
 const otpService = require("../services/otpService");
 const sendEmailService = require("../services/EmailService");
 const constants = require("../utils/constants");
@@ -94,55 +94,55 @@ const authController = {
       try {
         cookie.clearCookie(res, constants.TEXT.accessTokenName);
       } catch (error) {
-        logErrorDetails("clearCookie",req)
+        logErrorDetails("clearCookie", req);
       }
       try {
         cookie.clearCookie(res, constants.TEXT.refreshTokenName);
       } catch (error) {
-        logErrorDetails("clearCookie",req)
+        logErrorDetails("clearCookie", req);
       }
       next(error);
     }
   },
-  // forgotPassword: async (req, res) => {
-  //   try {
-  //     const { email } = req.body;
-  //     const link = await forgotPasswordService({
-  //       email: email,
-  //     });
-  //     const template = fs.readFileSync("views/forgetPassword.ejs", "utf-8");
-  //     await sendEmailService(
-  //       email,
-  //       {
-  //         title: "Khôi phục mật khẩu",
-  //         content: text.mailForgotPassword,
-  //         link,
-  //       },
-  //       template
-  //     );
-  //     res.status(200).json({
-  //       EM: "Vui lòng truy cập địa chỉ gmail hoàn tất cập nhật mật khẩu",
-  //     });
-  //   } catch (error) {
-  //     console.log(error);
-  //     res.status(400).json(error);
-  //   }
-  // },
-  // resetPassword: async (req, res) => {
-  //   const { user_id, token, password } = req.body;
-  //   try {
-  //     const reset = await resetPasswordService({
-  //       user_id,
-  //       token,
-  //       password,
-  //     });
-
-  //     res.status(200).json(reset);
-  //   } catch (error) {
-  //     console.log(error);
-  //     res.status(400).json(error);
-  //   }
-  // },
+  forgotPassword: async (req, res, next) => {
+    try {
+      const { email } = req.body;
+      const link = await forgotPasswordService({
+        email,
+      });
+      const template = fs.readFileSync("src/views/forgetPassword.ejs", "utf-8");
+      await sendEmailService(
+        email,
+        {
+          title: "Khôi phục mật khẩu",
+          content: text.mailForgotPassword,
+          link,
+        },
+        template
+      );
+      res.status(StatusCodes.OK).json({
+        message: "Email sent successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+  resetPassword: async (req, res, next) => {
+    const { user_id, token, password } = req.body;
+    try {
+      await resetPasswordService({
+        user_id,
+        token,
+        password,
+      });
+      res.status(StatusCodes.OK).json({
+        message: "Password reset successful",
+      });
+    } catch (error) {
+      console.log(error);
+      next(error);
+    }
+  },
   logout: async (req, res, next) => {
     try {
       await authService.logout(req);
@@ -153,12 +153,12 @@ const authController = {
       try {
         cookie.clearCookie(res, constants.TEXT.accessTokenName);
       } catch (error) {
-        logErrorDetails("clearCookie",req)
+        logErrorDetails("clearCookie", req);
       }
       try {
         cookie.clearCookie(res, constants.TEXT.refreshTokenName);
       } catch (error) {
-        logErrorDetails("clearCookie",req)
+        logErrorDetails("clearCookie", req);
       }
     }
   },
