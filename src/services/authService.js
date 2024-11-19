@@ -177,7 +177,7 @@ const authService = {
       const token = jwt.sign(payload, secret, {
         expiresIn: env.Time_JwtResetPassword,
       });
-      const link = `${env.Domain}/reset-password?user_id=${user._id}&token=${token}`;
+      const link = `${env.DomainInterface}/reset-password?user_id=${user._id}&token=${token}`;
       return link;
     } catch (error) {
       throw error;

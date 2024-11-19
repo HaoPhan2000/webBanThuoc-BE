@@ -2,6 +2,7 @@ require("dotenv").config();
 const env = {
   PORT: process.env.PORT,
   Domain: process.env.Domain,
+  DomainInterface:process.env.DomainInterface,
   Private_KeyAccessToken: process.env.Private_KeyAccessToken,
   Private_KeyRefreshToken: process.env.Private_KeyRefreshToken,
   Private_KeyResetPassword: process.env.Private_KeyResetPassword,

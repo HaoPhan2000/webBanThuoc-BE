@@ -1,8 +1,8 @@
-const env=require("../config/environment")
+const env = require("../config/environment");
 const { StatusCodes } = require("http-status-codes");
 const User = require("../models/userModel");
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken"); 
+const jwt = require("jsonwebtoken");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth2").Strategy;
 const saltRounds = 10;
@@ -12,7 +12,7 @@ passport.use(
     {
       clientID: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:3000/auth/google/callback",
+      callbackURL: `${env.Domain}/auth/google/callback`,
       passReqToCallback: true,
     },
     async (request, accessToken, refreshToken, profile, done) => {
@@ -41,15 +41,15 @@ passport.use(
 
         // Generate tokens
         const payload = { id: user._id, email: user.email, name: user.name };
-        const access_token = jwt.sign(payload, env.Private_KeyAccessToken, {
+        const accessToken = jwt.sign(payload, env.Private_KeyAccessToken, {
           expiresIn: env.Time_JwtAccessToken,
         });
-        const refresh_token = jwt.sign(payload, env.Private_KeyRefreshToken, {
+        const refreshToken = jwt.sign(payload, env.Private_KeyRefreshToken, {
           expiresIn: env.Time_JwtRefreshToken,
         });
 
         await user.updateOne({ refreshToken: refresh_token });
-        request.res.cookie(text.refreshTokenName,refresh_token, {
+        request.res.cookie(text.refreshTokenName, refresh_token, {
           httpOnly: true,
           secure: false,
           path: "/",
@@ -57,7 +57,7 @@ passport.use(
           maxAge: 30 * 24 * 60 * 60 * 1000,
         });
 
-        return done(null, { access_token});
+        return done(null, { accessToken, refreshToken });
       } catch (error) {
         return done(error);
       }

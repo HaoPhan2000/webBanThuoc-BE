@@ -1,7 +1,7 @@
 const env=require("./environment")
 const corsOptions = {
   origin: (origin, callback) => {
-    const whitelist = env.Domain.split(",");
+    const whitelist = env.DomainInterface.split(",");
     if (!origin || whitelist.includes(origin)) {
       return callback(null, true);
     }
