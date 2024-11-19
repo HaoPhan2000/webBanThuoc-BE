@@ -6,7 +6,7 @@ const authenticationMiddleware = (req, res, next) => {
   try {
     console.log("vào authenticationMiddleware");
     if (
-      constants.PUBLIC_PATH.find((item) => `${constants.BASE_URL_API_VERSION}${item}` === req.originalUrl)
+      constants.PUBLIC_PATH.some((item) => `${constants.BASE_URL_API_VERSION}${item}` === req.originalUrl)
     ) {
       return next();
     }

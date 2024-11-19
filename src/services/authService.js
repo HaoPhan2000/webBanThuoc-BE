@@ -82,7 +82,7 @@ const authService = {
         expiresIn: env.Time_JwtRefreshToken,
       });
 
-      let sessions = JSON.parse(user.session) || [];
+      let sessions = JSON.parse(user.session || "[]");
       if (sessions.length >= 3) {
         sessions.shift();
       }
@@ -111,51 +111,55 @@ const authService = {
       throw error;
     }
   },
-  refreshToken :async (refreshToken) => {
+  refreshToken: async (refreshToken) => {
     try {
       if (!refreshToken) {
         throw new customError(StatusCodes.UNAUTHORIZED, "Invalid token");
       }
-      const payload = jwt.verify(
-        refreshToken,
-        env.Private_KeyRefreshToken
-      );
+      const payload = jwt.verify(refreshToken, env.Private_KeyRefreshToken);
       const user = await User.findOne({
         where: { id: payload.id },
       });
-      let sessions = JSON.parse(user.session) || [];
-      //tới đây
-      if (!user || user.refreshToken !== refreshToken) {
+      if (!user) {
+        throw new customError(StatusCodes.UNAUTHORIZED, "Invalid token");
+      }
+      const sessions = JSON.parse(user.session || "[]");
+
+      const indexIdDevice = sessions.findIndex(
+        (item) => item.idDevice === payload.idDevice
+      );
+      if (indexIdDevice === -1) {
         throw new customError(StatusCodes.UNAUTHORIZED, "Invalid token");
       }
 
-      const newAccessToken = jwt.sign(
-        {
-          id: payload.id,
-          email: payload.email,
-          name: payload.name,
-        },
-        process.env.Private_KeyAccessToken,
-        { expiresIn: process.env.Time_JwtAccessToken }
-      );
+      const newPayload = {
+        id: user.id,
+        email: user.email,
+        idDevice: payload.idDevice,
+      };
+
+      const newAccessToken = jwt.sign(newPayload, env.Private_KeyAccessToken, {
+        expiresIn: env.Time_JwtAccessToken,
+      });
 
       const newRefreshToken = jwt.sign(
+        newPayload,
+        env.Private_KeyRefreshToken,
         {
-          id: payload.id,
-          email: payload.email,
-          name: payload.name,
-        },
-        process.env.Private_KeyRefreshToken,
-        {
-          expiresIn: process.env.Time_JwtRefreshToken,
+          expiresIn: env.Time_JwtRefreshToken,
         }
       );
-      await user.updateOne({ refreshToken: newRefreshToken });
+      sessions[indexIdDevice] = {
+        idDevice: payload.idDevice,
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      };
+      await user.update({ session: sessions });
       return { newAccessToken, newRefreshToken };
     } catch (error) {
       throw error;
     }
-  }
+  },
   // forgotPassword : async (customerData) => {
   //   try {
   //     const user = await User.findOne({ email: customerData.email });

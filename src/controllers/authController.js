@@ -3,6 +3,7 @@ const { StatusCodes } = require("http-status-codes");
 const otpService = require("../services/otpService");
 const sendEmailService = require("../services/EmailService");
 const constants = require("../utils/constants");
+const cookie = require("../utils/cookie");
 const customError = require("../utils/customError");
 const fs = require("fs");
 const authController = {
@@ -52,52 +53,47 @@ const authController = {
   login: async (req, res, next) => {
     try {
       const service = await authService.login(req);
-      const cookieOptions = {
-        httpOnly: true,
-        secure: false,
-        path: "/",
-        sameSite: "strict",
-      };
-
-      res.cookie(constants.TEXT.accessTokenName, service.accessToken, {
-        ...cookieOptions,
-        maxAge: 30 * 60 * 1000,
-      });
-
-      res.cookie(constants.TEXT.refreshTokenName, service.refreshToken, {
-        ...cookieOptions,
-        maxAge: 90 * 24 * 60 * 60 * 1000,
-      });
-      return res.status(StatusCodes.OK).json({ EC: 1, EM: "login successful" });
+      cookie.setCookie(
+        res,
+        constants.TEXT.accessTokenName,
+        service.accessToken,
+        30 * 60 * 1000
+      );
+      cookie.setCookie(
+        res,
+        constants.TEXT.refreshTokenName,
+        service.refreshToken,
+        90 * 24 * 60 * 60 * 1000
+      );
+      return res.status(StatusCodes.OK).json({ EC: 1, EM: "Login successful" });
     } catch (error) {
       next(error);
     }
   },
-  refreshToken: async (req, res) => {
+  refreshToken: async (req, res, next) => {
     try {
       const refreshToken = req.cookies.refreshToken;
-      const newToken = await refreshTokenService(refreshToken);
-      const cookieOptions = {
-        httpOnly: true,
-        secure: false,
-        path: "/",
-        sameSite: "strict",
-      };
-
-      res.cookie(constants.TEXT.accessTokenName, service.accessToken, {
-        ...cookieOptions,
-        maxAge: 30 * 60 * 1000,
-      });
-
-      res.cookie(constants.TEXT.refreshTokenName, service.refreshToken, {
-        ...cookieOptions,
-        maxAge: 90 * 24 * 60 * 60 * 1000,
-      });
-      return res.status(200).json({ newAccessToken: newToken.newAccessToken });
+      const service = await refreshTokenService(refreshToken);
+      cookie.setCookie(
+        res,
+        constants.TEXT.accessTokenName,
+        service.newAccessToken,
+        30 * 60 * 1000
+      );
+      cookie.setCookie(
+        res,
+        constants.TEXT.refreshTokenName,
+        service.newRefreshToken,
+        90 * 24 * 60 * 60 * 1000
+      );
+      return res
+        .status(StatusCodes.OK)
+        .json({ message: "Token refresh successful" });
     } catch (error) {
       console.log(error);
-      res.clearCookie(text.refreshTokenName);
-      return res.status(401).json(error);
+      cookie.clearCookie(res, constants.TEXT.accessTokenName);
+      cookie.clearCookie(res, constants.TEXT.refreshTokenName);
+      next(error);
     }
   },
   // forgotPassword: async (req, res) => {
@@ -139,21 +135,21 @@ const authController = {
   //     res.status(400).json(error);
   //   }
   // },
-  // logout: async (req, res) => {
-  //   try {
-  //     await User.findByIdAndUpdate(req?.user?.id, { refreshToken: null });
-  //     res.clearCookie(text.refreshTokenName, {
-  //       httpOnly: true,
-  //       secure: false,
-  //       path: "/",
-  //       sameSite: "strict",
-  //     });
+  logout: async (req, res) => {
+    try {
+      await User.findByIdAndUpdate(req?.user?.id, { refreshToken: null });
 
-  //     res.status(200).json("thành công");
-  //   } catch (error) {
-  //     res.status(400).json(error);
-  //   }
-  // },
+
+
+
+
+      cookie.clearCookie(res, constants.TEXT.accessTokenName);
+      cookie.clearCookie(res, constants.TEXT.refreshTokenName);
+      res.status(StatusCodes.OK).json("Logout successful");
+    } catch (error) {
+      res.status(400).json(error);
+    }
+  },
   // account: async (req, res) => {
   //   try {
   //     res.status(200).json(req.user);

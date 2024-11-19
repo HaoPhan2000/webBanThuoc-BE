@@ -5,7 +5,7 @@ const { StatusCodes } = require("http-status-codes");
 const authorizationMiddleware = (req, res, next) => {
   try {
   console.log("vào authorizationMiddleware")
-  if ( constants.PUBLIC_PATH.find((item) => `${constants.BASE_URL_API_VERSION}${item}` === req?.originalUrl))
+  if ( constants.PUBLIC_PATH.some((item) => `${constants.BASE_URL_API_VERSION}${item}` === req?.originalUrl))
     {
       return next();
     }
