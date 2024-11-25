@@ -13,6 +13,7 @@ const userRoutes = [
   "/register",
   "/confirmOtp",
   "/login",
+  "/account",
   "/refreshToken",
   "/forgotPassword",
   "/resetPassword",

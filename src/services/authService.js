@@ -16,10 +16,7 @@ const authService = {
         where: { email },
       });
       if (user) {
-        throw new customError(
-          StatusCodes.CONFLICT,
-          "Email already exists"
-        );
+        throw new customError(StatusCodes.CONFLICT, "Email already exists");
       }
     } catch (error) {
       throw error;
@@ -46,6 +43,7 @@ const authService = {
   login: async (req) => {
     try {
       const { email, password } = req.body;
+
       const user = await User.findOne({ where: { email } });
       if (!user) {
         throw new customError(
@@ -71,6 +69,7 @@ const authService = {
       const payload = {
         id: user.id,
         email: user.email,
+        role: user.role,
         idDevice: uniqueId,
       };
 
@@ -105,7 +104,8 @@ const authService = {
         isBot: ua.isBot,
         timestamp: new Date().toISOString(),
       });
-      return { accessToken, refreshToken };
+
+      return { user: { email: user.email }, accessToken, refreshToken };
     } catch (error) {
       throw error;
     }
@@ -137,6 +137,7 @@ const authService = {
       const newPayload = {
         id: user.id,
         email: user.email,
+        role: user.role,
         idDevice: payload.idDevice,
       };
 
@@ -177,7 +178,7 @@ const authService = {
       const token = jwt.sign(payload, secret, {
         expiresIn: env.Time_JwtResetPassword,
       });
-      const link = `${env.DomainInterface}/reset-password?user_id=${user._id}&token=${token}`;
+      const link = `${env.DomainInterface}/reset-password?user_id=${user.id}&token=${token}`;
       return link;
     } catch (error) {
       throw error;
@@ -185,12 +186,16 @@ const authService = {
   },
   resetPassword: async ({ user_id, token, password }) => {
     try {
-      const user = await User.findById(user_id);
+      const user = await User.findOne({
+        where: { id: user_id },
+      });
       if (!user) {
         throw new customError(StatusCodes.BAD_REQUEST, "User not found");
       }
-      const secret = process.env.Private_KeyResetPassword + user.password;
-      const payload = jwt.verify(token, secret);
+
+      const secret = env.Private_KeyResetPassword + user?.dataValues?.passWord;
+
+      jwt.verify(token, secret);
       const hashPassWord = await bcrypt.hash(password, saltRounds);
       await user.update({ passWord: hashPassWord });
     } catch (error) {

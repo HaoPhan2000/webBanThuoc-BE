@@ -6,9 +6,10 @@ const rateLimitByEmailMiddleware =require("../middleware/limitMiddleware/rateLim
 router.post("/register",authValidation.register, authController.register);
 router.post("/confirmOtp",authValidation.confirmOtp, authController.confirmOtp);
 router.post("/login",authValidation.login, authController.login);
-// router.put("/refreshToken", Controller.refreshToken);
-// router.post("/forgotPassword", Controller.forgotPassword);
-// router.post("/resetPassword", Controller.resetPassword);
-// router.put("/logout", Controller.logout);
+router.put("/refreshToken",authController.refreshToken);
+router.post("/forgotPassword",authValidation.forgotPassword,authController.forgotPassword);
+router.post("/resetPassword",authValidation.resetPassword,authController.resetPassword);
+router.get("/account", authController.account);
+router.put("/logout",authController.logout);
 
 module.exports= router

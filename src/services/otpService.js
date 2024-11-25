@@ -21,7 +21,7 @@ const otpService = {
       });
       return { code: 1, otp: OTP };
     } catch (error) {
-      console.log(error);
+
       return { code: 0 };
     }
   },
@@ -31,9 +31,9 @@ const otpService = {
       const otpHolder = await Otp.findAll({ where: { email }, order: [['createdAt', 'DESC']], raw: true });
       if (!otpHolder.length)
       throw new customError(StatusCodes.BAD_REQUEST, "Email does not exist",{EC:101});
-      console.log("otp"+otp)
+ 
       const lastOtp = otpHolder[0];
-      console.log(otpHolder)
+   
 
       const isMatch = await bcrypt.compare(otp, lastOtp.otpCode);
       if (!isMatch) {
@@ -46,9 +46,8 @@ const otpService = {
         );
         throw new customError(StatusCodes.BAD_REQUEST, "Incorrect OTP code",{EC:103});
       }
-      return {EC:1, EM:"success"};
     } catch (error) {
-      console.log(error)
+
       throw error;
     }
   },

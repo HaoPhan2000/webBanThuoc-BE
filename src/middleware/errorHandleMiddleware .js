@@ -5,7 +5,7 @@ const errorHandleMiddleware = (err, req, res, next) => {
   const responseError = {
     statusCode: err.statusCode,
     message: err.message || StatusCodes[err.statusCode],
-    ...(err.data && { data: err.data }),
+    ...(err.details && { details: err.details }),
   };
 
   return res.status(err.statusCode).json(responseError);

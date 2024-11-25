@@ -27,7 +27,7 @@ Otp.init(
     expiresAt: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: () => new Date(Date.now() + constants.timeOtp * 1000), // 60 giây kể từ thời điểm tạo
+      defaultValue: () => new Date(Date.now() + constants.timeOtp * 1000),
     },
   },
   {

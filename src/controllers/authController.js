@@ -1,6 +1,5 @@
 const authService = require("../services/authService");
 const { StatusCodes } = require("http-status-codes");
-const logErrorDetails = require("../utils/errorLoggerFunction");
 const otpService = require("../services/otpService");
 const sendEmailService = require("../services/EmailService");
 const constants = require("../utils/constants");
@@ -10,6 +9,7 @@ const fs = require("fs");
 const authController = {
   register: async (req, res, next) => {
     try {
+      
       const { email } = req.body;
       await authService.register({
         email: email,
@@ -54,25 +54,30 @@ const authController = {
   login: async (req, res, next) => {
     try {
       const service = await authService.login(req);
+    
       cookie.setCookie(
         res,
         constants.TEXT.accessTokenName,
         service.accessToken,
         30 * 60 * 1000
       );
+     
       cookie.setCookie(
         res,
         constants.TEXT.refreshTokenName,
         service.refreshToken,
-        90 * 24 * 60 * 60 * 1000
+        90 * 24 * 60 * 60 * 1000,
       );
-      return res.status(StatusCodes.OK).json({ EC: 1, EM: "Login successful" });
+     
+      return res.status(StatusCodes.OK).json({ EC: 1, EM: "Login successful",user:service.user});
     } catch (error) {
+   
       next(error);
     }
   },
   refreshToken: async (req, res, next) => {
     try {
+      
       const refreshToken = req?.cookies?.refreshToken;
       const service = await authService.refreshToken(refreshToken);
       cookie.setCookie(
@@ -85,29 +90,20 @@ const authController = {
         res,
         constants.TEXT.refreshTokenName,
         service.newRefreshToken,
-        90 * 24 * 60 * 60 * 1000
+        90 * 24 * 60 * 60 * 1000,
       );
       return res
         .status(StatusCodes.OK)
         .json({ message: "Token refresh successful" });
     } catch (error) {
-      try {
-        cookie.clearCookie(res, constants.TEXT.accessTokenName);
-      } catch (error) {
-        logErrorDetails("clearCookie", req);
-      }
-      try {
-        cookie.clearCookie(res, constants.TEXT.refreshTokenName);
-      } catch (error) {
-        logErrorDetails("clearCookie", req);
-      }
+      cookie.clearAllCookiesToken(res, req)
       next(error);
     }
   },
   forgotPassword: async (req, res, next) => {
     try {
       const { email } = req.body;
-      const link = await forgotPasswordService({
+      const link = await authService.forgotPassword({
         email,
       });
       const template = fs.readFileSync("src/views/forgetPassword.ejs", "utf-8");
@@ -115,7 +111,7 @@ const authController = {
         email,
         {
           title: "Khôi phục mật khẩu",
-          content: text.mailForgotPassword,
+          content: constants.TEXT.mailForgotPassword,
           link,
         },
         template
@@ -124,13 +120,14 @@ const authController = {
         message: "Email sent successfully",
       });
     } catch (error) {
+   
       next(error);
     }
   },
   resetPassword: async (req, res, next) => {
     const { user_id, token, password } = req.body;
     try {
-      await resetPasswordService({
+      await authService.resetPassword({
         user_id,
         token,
         password,
@@ -139,33 +136,26 @@ const authController = {
         message: "Password reset successful",
       });
     } catch (error) {
-      console.log(error);
+   
       next(error);
     }
   },
   logout: async (req, res, next) => {
     try {
       await authService.logout(req);
+      cookie.clearAllCookiesToken(res, req)
       res.status(StatusCodes.OK).json("Logout successful");
     } catch (error) {
+      cookie.clearAllCookiesToken(res, req)
       next(error);
-    } finally {
-      try {
-        cookie.clearCookie(res, constants.TEXT.accessTokenName);
-      } catch (error) {
-        logErrorDetails("clearCookie", req);
-      }
-      try {
-        cookie.clearCookie(res, constants.TEXT.refreshTokenName);
-      } catch (error) {
-        logErrorDetails("clearCookie", req);
-      }
     }
   },
   account: async (req, res) => {
     try {
+    
       res.status(StatusCodes.OK).json(req.user);
     } catch (error) {
+ 
       res.status(StatusCodes.UNAUTHORIZED).json(error);
     }
   },
