@@ -17,5 +17,7 @@ const env = {
   DB_PASSWORD: process.env.DB_PASSWORD,
   APP_HOST: process.env.APP_HOST,
   DB_DIALECT: process.env.DB_DIALECT,
+  GOOGLE_CLIENT_ID:process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET:process.env.GOOGLE_CLIENT_SECRET
 };
 module.exports=env

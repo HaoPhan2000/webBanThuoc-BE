@@ -1,7 +1,7 @@
 const constants = {
   TEXT: {
     refreshTokenName: "refreshToken",
-    accessTokenName:"accessToken",
+    accessTokenName: "accessToken",
     mailRegisterTitle: "Đăng ký tài khoản",
     mailRegisterContent:
       "Vui lòng nhập mã xác thực để hoàn tất đăng ký tài khoản!",
@@ -16,7 +16,16 @@ const constants = {
     "/refreshToken",
     "/forgotPassword",
     "/resetPassword",
+    "/account",
+    "/auth/google",
+    "/auth/google/callback",
+    "/socket.io/"
   ]),
   timeOtp: 120,
+  loginType:{
+    passWord:"passWord",
+    OAuth2:"OAuth2",
+    both:"both"
+  }
 };
 module.exports = constants;

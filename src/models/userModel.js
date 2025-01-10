@@ -1,5 +1,5 @@
 const { Sequelize, DataTypes, Model } = require("sequelize");
-const sequelize=require("../config/config")
+const sequelize = require("../config/config");
 class User extends Model {}
 
 User.init(
@@ -28,6 +28,13 @@ User.init(
       type: DataTypes.STRING(20),
       allowNull: true,
     },
+    avatar: {
+      type: DataTypes.STRING(),
+      allowNull: true,
+      validate: {
+        notEmpty: true,
+      },
+    },
     email: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -46,23 +53,23 @@ User.init(
     session: {
       type: Sequelize.JSON,
       allowNull: true,
-      defaultValue: []
     },
     OAuth2: {
       type: Sequelize.JSON,
       allowNull: true,
-      validate: {
-        notEmpty: true,
-      },
     },
     role: {
       type: DataTypes.ENUM("admin", "manager", "user"),
       allowNull: false,
-      defaultValue:"user"
+      defaultValue: "user",
     },
     isBanned: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+      allowNull: false,
+    },
+    loginType: {
+      type: DataTypes.ENUM("passWord", "OAuth2", "both"),
       allowNull: false,
     },
   },

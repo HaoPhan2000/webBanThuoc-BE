@@ -1,12 +1,17 @@
 const { StatusCodes } = require("http-status-codes");
 const customError = require("../utils/customError");
 const jwt = require("jsonwebtoken");
-const env =require("../config/environment")
+const env = require("../config/environment");
 const constants = require("../utils/constants");
 const authenticationMiddleware = (req, res, next) => {
   try {
+    console.log("authenticationMiddleware nè")
+    const {pathname} = new URL(req.originalUrl,`http://${req.headers.host}`);
+    console.log(pathname)
     if (
-      constants.PUBLIC_PATH.some((item) => `${constants.BASE_URL_API_VERSION}${item}` === req.originalUrl)
+      constants.PUBLIC_PATH.some((item) => {
+        return `${constants.BASE_URL_API_VERSION}${item}` === pathname;
+      })
     ) {
       return next();
     }

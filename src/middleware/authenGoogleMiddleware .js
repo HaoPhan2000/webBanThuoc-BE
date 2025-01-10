@@ -1,66 +1,79 @@
-// const env = require("../config/environment");
-// const { StatusCodes } = require("http-status-codes");
-// const User = require("../models/userModel");
-// const bcrypt = require("bcrypt");
-// const jwt = require("jsonwebtoken");
-// const passport = require("passport");
-// const GoogleStrategy = require("passport-google-oauth2").Strategy;
-// const saltRounds = 10;
-// const text = require("../constants/text");
-// passport.use(
-//   new GoogleStrategy(
-//     {
-//       clientID: env.GOOGLE_CLIENT_ID,
-//       clientSecret: env.GOOGLE_CLIENT_SECRET,
-//       callbackURL: `${env.Domain}/auth/google/callback`,
-//       passReqToCallback: true,
-//     },
-//     async (request, accessToken, refreshToken, profile, done) => {
-//       try {
-//         if (!profile?.email_verified) {
-//           throw new customError(StatusCodes.BAD_REQUEST, "Email not verified");
-//         }
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const bcrypt = require("bcrypt");
+const { v4: uuidv4 } = require("uuid");
+const User = require("../models/userModel");
+const Function = require("../utils/function");
+const constants = require("../utils/constants");
+const customError = require("../utils/customError");
+const env = require("../config/environment");
+const saltRounds = 10;
 
-//         let user = await User.findOne({ email: profile.email });
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      callbackURL: `${env.Domain}${constants.BASE_URL_API_VERSION}/auth/google/callback`,
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const dataUser = profile._json;
+        if (!dataUser.email_verified) {
+          throw new customError(StatusCodes.BAD_REQUEST, "Email not verified");
+        }
+        let user = await User.findOne({
+          where: { email: dataUser.email },
+        });
+        const hashIdUser = await bcrypt.hash(dataUser.sub, saltRounds);
+        if (!user) {
+          user = await User.create({
+            fullName: dataUser.name,
+            email: dataUser.email,
+            avatar: dataUser.picture || null,
+            OAuth2: { provider: "google", id: hashIdUser },
+            loginType: constants.loginType.OAuth2,
+          });
+        } else {
+          if (user.loginType === constants.loginType.passWord) {
+            await user.update({
+              fullName: dataUser.name,
+              avatar: dataUser.picturey || null,
+              OAuth2: { provider: "google", id: hashIdUser },
+              loginType: constants.loginType.both,
+            });
+            user = await User.findOne({
+              where: { email: dataUser.email },
+            });
+          }
 
-//         if (user) {
-//           // Check password match
-//           const isMatchingId = await bcrypt.compare(profile.id, user.password);
-//           if (!isMatchingId) {
-//             throw new customError(StatusCodes.BAD_REQUEST, "Id does not match");
-//           }
-//         } else {
-//           // Create a new user
-//           const hashedId = await bcrypt.hash(profile.id, saltRounds);
-//           user = await User.create({
-//             name: profile.displayName,
-//             email: profile.email,
-//             password: hashedId,
-//           });
-//         }
+          const isGoogleIdValid = await bcrypt.compare(
+            dataUser.sub,
+            JSON.parse(user.OAuth2).id
+          );
 
-//         // Generate tokens
-//         const payload = { id: user._id, email: user.email, name: user.name };
-//         const accessToken = jwt.sign(payload, env.Private_KeyAccessToken, {
-//           expiresIn: env.Time_JwtAccessToken,
-//         });
-//         const refreshToken = jwt.sign(payload, env.Private_KeyRefreshToken, {
-//           expiresIn: env.Time_JwtRefreshToken,
-//         });
+          if (!isGoogleIdValid) {
+            throw new customError(StatusCodes.BAD_REQUEST, "Id does not match");
+          }
+        }
 
-//         await user.updateOne({ refreshToken: refresh_token });
-//         request.res.cookie(text.refreshTokenName, refresh_token, {
-//           httpOnly: true,
-//           secure: false,
-//           path: "/",
-//           sameSite: "strict",
-//           maxAge: 30 * 24 * 60 * 60 * 1000,
-//         });
+        if (user.isBanned) {
+          throw new customError(StatusCodes.FORBIDDEN, "USER_BANNED");
+        }
+        const uniqueId = uuidv4();
+        const payload = {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          idDevice: uniqueId,
+        };
 
-//         return done(null, { accessToken, refreshToken });
-//       } catch (error) {
-//         return done(error);
-//       }
-//     }
-//   )
-// );
+        const { accessToken, refreshToken } = Function.createTokens(payload);
+        await Function.updateSessions(user,accessToken,refreshToken, uniqueId);
+        done(null, { accessToken, refreshToken, email: dataUser.email });
+      } catch (error) {
+        done(error);
+      }
+    }
+  )
+);

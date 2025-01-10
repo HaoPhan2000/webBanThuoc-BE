@@ -1,10 +1,12 @@
 const User = require("../models/userModel");
+const constants = require("../utils/constants");
 const Otp = require("../models/otpModel");
 const loginLogger = require("../loggers/loginLogger");
 const customError = require("../utils/customError");
 const { StatusCodes } = require("http-status-codes");
 const otpService = require("../services/otpService");
 const { v4: uuidv4 } = require("uuid");
+const Function = require("../utils/function");
 const env = require("../config/environment");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -31,6 +33,7 @@ const authService = {
       await User.create({
         email: dataUser.email,
         passWord: hashPassWord,
+        loginType: constants.loginType.passWord,
       });
       await Otp.destroy({ where: { email: dataUser.email } });
     } catch (error) {
@@ -73,29 +76,16 @@ const authService = {
         idDevice: uniqueId,
       };
 
-      const accessToken = jwt.sign(payload, env.Private_KeyAccessToken, {
-        expiresIn: env.Time_JwtAccessToken,
-      });
-
-      const refreshToken = jwt.sign(payload, env.Private_KeyRefreshToken, {
-        expiresIn: env.Time_JwtRefreshToken,
-      });
-
-      let sessions = JSON.parse(user.session || "[]");
-      if (sessions.length >= 3) {
-        sessions.shift();
-      }
-
-      sessions.push({
-        idDevice: uniqueId,
-        refreshToken,
-      });
-      await user.update({ session: sessions });
+      const { accessToken, refreshToken } = Function.createTokens(payload);
+      await Function.updateSessions(user, accessToken, refreshToken, uniqueId);
       const ua = req.useragent;
       loginLogger.info({
-        action: "login",
+        action: "login-passWord",
         email,
-        ip: req.headers["x-forwarded-for"] || req.socket.remoteAddress,
+        ip:
+          req.headers["x-forwarded-for"] ||
+          req.socket.remoteAddress ||
+          "Unknown IP",
         platform: ua.platform,
         browser: ua.browser,
         isDesktop: ua.isDesktop,
@@ -140,20 +130,11 @@ const authService = {
         role: user.role,
         idDevice: payload.idDevice,
       };
-
-      const newAccessToken = jwt.sign(newPayload, env.Private_KeyAccessToken, {
-        expiresIn: env.Time_JwtAccessToken,
-      });
-
-      const newRefreshToken = jwt.sign(
-        newPayload,
-        env.Private_KeyRefreshToken,
-        {
-          expiresIn: env.Time_JwtRefreshToken,
-        }
-      );
+      const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+        Function.createTokens(newPayload);
       sessions[indexIdDevice] = {
         idDevice: payload.idDevice,
+        accessToken: newAccessToken,
         refreshToken: newRefreshToken,
       };
       await user.update({ session: sessions });
@@ -168,7 +149,7 @@ const authService = {
         where: { email },
       });
       if (!user) {
-        throw new customError(StatusCodes.BAD_REQUEST, "User not found");
+        return false;
       }
       const secret = env.Private_KeyResetPassword + user.passWord;
       const payload = {
@@ -178,8 +159,8 @@ const authService = {
       const token = jwt.sign(payload, secret, {
         expiresIn: env.Time_JwtResetPassword,
       });
-      const link = `${env.DomainInterface}/reset-password?user_id=${user.id}&token=${token}`;
-      return link;
+
+      return `${env.DomainInterface}/reset-password?user_id=${user.id}&token=${token}`;
     } catch (error) {
       throw error;
     }
@@ -193,7 +174,7 @@ const authService = {
         throw new customError(StatusCodes.BAD_REQUEST, "User not found");
       }
 
-      const secret = env.Private_KeyResetPassword + user?.dataValues?.passWord;
+      const secret = env.Private_KeyResetPassword + user.passWord;
 
       jwt.verify(token, secret);
       const hashPassWord = await bcrypt.hash(password, saltRounds);
@@ -223,6 +204,18 @@ const authService = {
     sessions.splice(indexIdDevice, 1);
 
     await user.update({ session: sessions });
+  },
+  account: async (req) => {
+    try {
+      const token = req?.cookies?.accessToken;
+      if (!token) {
+        throw new customError(StatusCodes.UNAUTHORIZED, "Token is required.");
+      }
+      const user = jwt.verify(token, env.Private_KeyAccessToken);
+      return user
+    } catch (error) {
+      throw error;
+    }
   },
 };
 module.exports = authService;
