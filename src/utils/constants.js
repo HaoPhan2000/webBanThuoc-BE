@@ -21,7 +21,7 @@ const constants = {
     "/auth/google/callback",
     "/socket.io/"
   ]),
-  timeOtp: 120,
+  timeOtp: 60,
   loginType:{
     passWord:"passWord",
     OAuth2:"OAuth2",

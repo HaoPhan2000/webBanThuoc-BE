@@ -167,12 +167,14 @@ const authController = {
     }
   },
   resetPassword: async (req, res, next) => {
-    const { user_id, token, password } = req.body;
+    const { user_id, token, password,logoutAllDevice} = req.body;
+    console.log(logoutAllDevice)
     try {
       await authService.resetPassword({
         user_id,
         token,
         password,
+        logoutAllDevice
       });
       res.status(StatusCodes.OK).json({
         message: "Password reset successful",
@@ -191,12 +193,12 @@ const authController = {
       next(error);
     }
   },
-  account: async (req, res) => {
+  account: async (req, res,next) => {
     try {
       const user=await authService.account(req);
       res.status(StatusCodes.OK).json(user);
     } catch (error) {
-      res.status(StatusCodes.UNAUTHORIZED).json(error);
+      next(error);
     }
   },
 };

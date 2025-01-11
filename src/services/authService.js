@@ -10,6 +10,7 @@ const Function = require("../utils/function");
 const env = require("../config/environment");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const redisFunction = require("../utils/redisFunction");
 const saltRounds = 10;
 const authService = {
   register: async ({ email }) => {
@@ -165,7 +166,7 @@ const authService = {
       throw error;
     }
   },
-  resetPassword: async ({ user_id, token, password }) => {
+  resetPassword: async ({ user_id, token, password, logoutAllDevice }) => {
     try {
       const user = await User.findOne({
         where: { id: user_id },
@@ -178,7 +179,35 @@ const authService = {
 
       jwt.verify(token, secret);
       const hashPassWord = await bcrypt.hash(password, saltRounds);
-      await user.update({ passWord: hashPassWord });
+
+      if (logoutAllDevice) {
+        const sessions = JSON.parse(user.session || "[]"); // Lấy danh sách sessions
+        const blacklistPromises = sessions.map((element) => {
+          const decoded = jwt.decode(element.accessToken);
+          const exp = decoded?.exp;
+  
+          // Nếu không có `exp`, bỏ qua token
+          if (!exp) {
+            return Promise.resolve(); // Không cần thêm vào blacklist
+          }
+  
+          // Tính TTL và thêm vào blacklist nếu token còn hạn
+          const ttl = exp - Math.floor(Date.now() / 1000);
+          if (ttl > 0) {
+            return redisFunction.addToBlacklist(element.accessToken, ttl);
+          }
+  
+          return Promise.resolve();
+        });
+  
+        // Đợi tất cả các tác vụ thêm vào blacklist hoàn thành
+        await Promise.all(blacklistPromises);
+  
+        // Cập nhật mật khẩu và xóa tất cả sessions
+        await user.update({ passWord: hashPassWord, session: [] });
+      } else {
+        await user.update({ passWord: hashPassWord });
+      }
     } catch (error) {
       throw error;
     }
@@ -209,10 +238,15 @@ const authService = {
     try {
       const token = req?.cookies?.accessToken;
       if (!token) {
-        throw new customError(StatusCodes.UNAUTHORIZED, "Token is required.");
+        throw new customError(StatusCodes.UNAUTHORIZED, "Token is required");
+      }
+      const isBlacklisted = await redisFunction.isBlacklisted(token);
+      console.log(isBlacklisted);
+      if (isBlacklisted === 1) {
+        throw new customError(StatusCodes.FORBIDDEN, "Token has been banned");
       }
       const user = jwt.verify(token, env.Private_KeyAccessToken);
-      return user
+      return user;
     } catch (error) {
       throw error;
     }

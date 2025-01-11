@@ -82,6 +82,7 @@ const authValidation = {
         .max(32)
         .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,}$"))
         .required(),
+        logoutAllDevice:Joi.boolean(),
       });
       await Schema.validateAsync(req.body);
       next();
