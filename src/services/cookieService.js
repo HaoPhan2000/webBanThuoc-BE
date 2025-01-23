@@ -1,5 +1,5 @@
 const constants = require("../utils/constants");
-const cookie = {
+const cookieService = {
   setCookie: (res, cookieName, data, age) => {
     res.cookie(cookieName, data, {
       httpOnly: true,
@@ -27,4 +27,4 @@ const cookie = {
   },
 };
 
-module.exports = cookie;
+module.exports = cookieService;

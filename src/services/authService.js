@@ -6,11 +6,11 @@ const customError = require("../utils/customError");
 const { StatusCodes } = require("http-status-codes");
 const otpService = require("../services/otpService");
 const { v4: uuidv4 } = require("uuid");
-const Function = require("../utils/function");
+const functionService = require("./functionService");
 const env = require("../config/environment");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const redisFunction = require("../utils/redisFunction");
+// const redisFunction = require("../utils/redisFunction");
 const saltRounds = 10;
 const authService = {
   register: async ({ email }) => {
@@ -77,8 +77,8 @@ const authService = {
         idDevice: uniqueId,
       };
 
-      const { accessToken, refreshToken } = Function.createTokens(payload);
-      await Function.updateSessions(user, accessToken, refreshToken, uniqueId);
+      const { accessToken, refreshToken } = functionService.createTokens(payload);
+      await functionService.updateSessions(user, accessToken, refreshToken, uniqueId);
       const ua = req.useragent;
       loginLogger.info({
         action: "login-passWord",
@@ -132,7 +132,7 @@ const authService = {
         idDevice: payload.idDevice,
       };
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-        Function.createTokens(newPayload);
+      functionService.createTokens(newPayload);
       sessions[indexIdDevice] = {
         idDevice: payload.idDevice,
         accessToken: newAccessToken,
@@ -188,7 +188,7 @@ const authService = {
   
           // Nếu không có `exp`, bỏ qua token
           if (!exp) {
-            return Promise.resolve(); // Không cần thêm vào blacklist
+            return Promise.resolve(); 
           }
   
           // Tính TTL và thêm vào blacklist nếu token còn hạn
@@ -234,22 +234,6 @@ const authService = {
 
     await user.update({ session: sessions });
   },
-  account: async (req) => {
-    try {
-      const token = req?.cookies?.accessToken;
-      if (!token) {
-        throw new customError(StatusCodes.UNAUTHORIZED, "Token is required");
-      }
-      const isBlacklisted = await redisFunction.isBlacklisted(token);
-      console.log(isBlacklisted);
-      if (isBlacklisted === 1) {
-        throw new customError(StatusCodes.FORBIDDEN, "Token has been banned");
-      }
-      const user = jwt.verify(token, env.Private_KeyAccessToken);
-      return user;
-    } catch (error) {
-      throw error;
-    }
-  },
 };
+
 module.exports = authService;

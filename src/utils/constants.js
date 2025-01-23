@@ -16,7 +16,6 @@ const constants = {
     "/refreshToken",
     "/forgotPassword",
     "/resetPassword",
-    "/account",
     "/auth/google",
     "/auth/google/callback",
     "/socket.io/"

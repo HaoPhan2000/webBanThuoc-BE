@@ -1,6 +1,6 @@
 const env = require("../config/environment");
 const jwt = require("jsonwebtoken");
-const Function = {
+const functionService = {
   createTokens: (payload) => {
     const accessToken = jwt.sign(payload, env.Private_KeyAccessToken, {
       expiresIn: env.Time_JwtAccessToken,
@@ -12,13 +12,13 @@ const Function = {
 
     return { accessToken, refreshToken };
   },
-  updateSessions: async (user, accessToken,refreshToken, uniqueId) => {
+  updateSessions: async (user, accessToken, refreshToken, uniqueId) => {
     const sessions = JSON.parse(user.session || "[]");
     if (sessions.length >= 3) {
       sessions.shift();
     }
-    sessions.push({ idDevice: uniqueId, accessToken,refreshToken });
+    sessions.push({ idDevice: uniqueId, accessToken, refreshToken });
     await user.update({ session: sessions });
   },
 };
-module.exports = Function;
+module.exports = functionService;

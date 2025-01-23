@@ -3,7 +3,7 @@ const { StatusCodes } = require("http-status-codes");
 const otpService = require("../services/otpService");
 const sendEmailService = require("../services/EmailService");
 const constants = require("../utils/constants");
-const cookie = require("../utils/cookie");
+const cookie = require("../services/cookieService");
 const customError = require("../utils/customError");
 const loginLogger = require("../loggers/loginLogger");
 const fs = require("fs");
@@ -195,8 +195,7 @@ const authController = {
   },
   account: async (req, res,next) => {
     try {
-      const user=await authService.account(req);
-      res.status(StatusCodes.OK).json(user);
+      res.status(StatusCodes.OK).json(req.user);
     } catch (error) {
       next(error);
     }

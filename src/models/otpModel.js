@@ -1,6 +1,6 @@
 const { Sequelize, DataTypes, Model } = require("sequelize");
-const constants =require("../utils/constants")
-const sequelize=require("../config/config")
+const constants = require("../utils/constants");
+const sequelize = require("../config/configDB");
 class Otp extends Model {}
 
 Otp.init(

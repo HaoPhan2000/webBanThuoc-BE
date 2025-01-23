@@ -3,7 +3,7 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require("uuid");
 const User = require("../models/userModel");
-const Function = require("../utils/function");
+const functionService = require("../services/functionService");
 const constants = require("../utils/constants");
 const customError = require("../utils/customError");
 const env = require("../config/environment");
@@ -68,8 +68,8 @@ passport.use(
           idDevice: uniqueId,
         };
 
-        const { accessToken, refreshToken } = Function.createTokens(payload);
-        await Function.updateSessions(user,accessToken,refreshToken, uniqueId);
+        const { accessToken, refreshToken } = functionService.createTokens(payload);
+        await functionService.updateSessions(user,accessToken,refreshToken, uniqueId);
         done(null, { accessToken, refreshToken, email: dataUser.email });
       } catch (error) {
         done(error);
