@@ -22,7 +22,7 @@ const cookieService = {
       constants.TEXT.refreshTokenName,
     ];
     cookiesToClear.forEach((cookieName) => {
-      cookie.clearCookie(res, cookieName);
+      cookieService.clearCookie(res, cookieName);
     });
   },
 };

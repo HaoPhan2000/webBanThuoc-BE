@@ -1,8 +1,10 @@
 const { Server } = require("socket.io");
 const env = require("../config/environment");
 const constants = require("../utils/constants");
+const connectEvent = require("../socket/connectEvent");
+let io;
 function setupSocketIO(server) {
-  const io = new Server(server, {
+   io = new Server(server, {
     path: `${constants.BASE_URL_API_VERSION}/socket.io`,
     cors: {
       origin: env.DomainInterface,
@@ -12,12 +14,17 @@ function setupSocketIO(server) {
 
   io.on("connection", (socket) => {
     console.log(`Client connected: ${socket.id}`);
-    socket.emit("isLogout", true);
+    connectEvent(socket);
     // Xử lý ngắt kết nối
     socket.on("disconnect", () => {
       console.log(`Client disconnected: ${socket.id}`);
     });
   });
 }
-
-module.exports = setupSocketIO;
+function getIO() {
+  if (!io) {
+    throw new Error("Socket.io is not initialized!");
+  }
+  return io;
+}
+module.exports = {setupSocketIO,getIO};

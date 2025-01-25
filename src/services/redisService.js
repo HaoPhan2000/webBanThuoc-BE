@@ -4,37 +4,20 @@ const redisService = {
     await redis.set(`blacklist:${token}`, "1", "EX", ttl); // `EX` để đặt TTL
   },
   isBlacklisted: async (token) => {
-    const result = await redis.exists(`blacklist:${token}`);
-    return result;
+    return await redis.exists(`blacklist:${token}`);
   },
-  addSocketId: async (userId, idSocket) => {
-    await redis.rpush(`socketIoUser:${userId}`, idSocket, (err, res) => {
-      if (err) throw err;
-    });
-    await redis.expire(`socketIoUser:${userId}`, 259200, (err, result) => {
-      if (err) throw err;
-      console.log("Thiết lập TTL thành công:", result); // 1 nếu thành công
-    });
+  addSocketId: async (userId, idSocket, ttl) => {
+    await redis.sadd(`socketIoUser:${userId}`, idSocket);
+    await redis.expire(`socketIoUser:${userId}`, ttl);
   },
   getAllSocketIdList: async (userId) => {
-    await redis.lrange(`socketIoUser:${userId}`, 0, -1, (err, list) => {
-      if (err) throw err;
-      return list;
-    });
+    return await redis.smembers(`socketIoUser:${userId}`);
   },
   deleteSocketId: async (userId, idSocket) => {
-    await redis.lrem(`socketIoUser:${userId}`, 0, idSocket, (err, res) => {
-      if (err) throw err;
-    });
+    await redis.srem(`socketIoUser:${userId}`, idSocket);
   },
   deleteAllSocketId: async (userId) => {
-    await redis.del(`socketIoUser:${userId}`, (err, result) => {
-      if (err) throw err;
-    });
-  },
-  updateSocketId: async (userId, idSocket) => {
-    await redisFunction.deleteSocketId(userId, idSocket);
-    await redisFunction.addSocketId(userId, idSocket);
+    await redis.del(`socketIoUser:${userId}`);
   },
 };
 module.exports = redisService;

@@ -9,8 +9,9 @@ const { v4: uuidv4 } = require("uuid");
 const functionService = require("./functionService");
 const env = require("../config/environment");
 const bcrypt = require("bcrypt");
+const { getIO } = require("../config/configSocketIO");
 const jwt = require("jsonwebtoken");
-// const redisFunction = require("../utils/redisFunction");
+const redisService = require("../services/redisService");
 const saltRounds = 10;
 const authService = {
   register: async ({ email }) => {
@@ -77,8 +78,14 @@ const authService = {
         idDevice: uniqueId,
       };
 
-      const { accessToken, refreshToken } = functionService.createTokens(payload);
-      await functionService.updateSessions(user, accessToken, refreshToken, uniqueId);
+      const { accessToken, refreshToken } =
+        functionService.createTokens(payload);
+      await functionService.updateSessions(
+        user,
+        accessToken,
+        refreshToken,
+        uniqueId
+      );
       const ua = req.useragent;
       loginLogger.info({
         action: "login-passWord",
@@ -132,7 +139,7 @@ const authService = {
         idDevice: payload.idDevice,
       };
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-      functionService.createTokens(newPayload);
+        functionService.createTokens(newPayload);
       sessions[indexIdDevice] = {
         idDevice: payload.idDevice,
         accessToken: newAccessToken,
@@ -185,26 +192,27 @@ const authService = {
         const blacklistPromises = sessions.map((element) => {
           const decoded = jwt.decode(element.accessToken);
           const exp = decoded?.exp;
-  
+
           // Nếu không có `exp`, bỏ qua token
           if (!exp) {
-            return Promise.resolve(); 
+            return Promise.resolve();
           }
-  
+
           // Tính TTL và thêm vào blacklist nếu token còn hạn
           const ttl = exp - Math.floor(Date.now() / 1000);
           if (ttl > 0) {
-            return redisFunction.addToBlacklist(element.accessToken, ttl);
+            return redisService.addToBlacklist(element.accessToken, ttl);
           }
-  
+
           return Promise.resolve();
         });
-  
+
         // Đợi tất cả các tác vụ thêm vào blacklist hoàn thành
         await Promise.all(blacklistPromises);
-  
+
         // Cập nhật mật khẩu và xóa tất cả sessions
         await user.update({ passWord: hashPassWord, session: [] });
+        await notifyLogout(user_id);
       } else {
         await user.update({ passWord: hashPassWord });
       }
@@ -236,4 +244,14 @@ const authService = {
   },
 };
 
+async function notifyLogout(userId) {
+  const io = getIO();
+  const socketIds = await redisService.getAllSocketIdList(userId);
+  socketIds.forEach((socketId) => {
+    io.to(socketId).emit("isLogout", {
+      message: "Bạn đã bị đăng xuất do mật khẩu đã thay đổi.",
+    });
+  });
+  await redisService.deleteAllSocketId(userId);
+}
 module.exports = authService;

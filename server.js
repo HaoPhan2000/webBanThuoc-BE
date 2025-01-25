@@ -8,7 +8,7 @@ const initRoutes = require("./src/routers/initRoutes");
 const connectDB = require("./src/config/connectDB");
 const connectRedisClould = require("./src/config/connectRedisClould");
 require("./src/middleware/authenGoogleMiddleware ");
-const setupSocketIO = require("./src/config/configSocketIO");
+const {setupSocketIO} = require("./src/config/configSocketIO");
 const app = express();
 const server = require("http").createServer(app);
 app.use(cors(corsOptions)); // Cấu hình CORS
