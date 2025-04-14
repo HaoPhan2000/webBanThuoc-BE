@@ -4,7 +4,7 @@ const customError = require("../utils/customError");
 const { StatusCodes } = require("http-status-codes");
 const authorizationMiddleware = (req, res, next) => {
   try {
-    const { pathname } = new URL(req.originalUrl, `http://${req.headers.host}`);
+    const  pathname = req.path
     if (
       constants.PUBLIC_PATH.some(
         (item) => `${constants.BASE_URL_API_VERSION}${item}` === pathname

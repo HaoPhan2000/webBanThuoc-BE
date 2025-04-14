@@ -7,6 +7,7 @@ const functionService = require("../services/functionService");
 const constants = require("../utils/constants");
 const customError = require("../utils/customError");
 const env = require("../config/environment");
+const {addBlacklistPromises} =require("../services/authService")
 const saltRounds = 10;
 
 passport.use(
@@ -18,6 +19,7 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+     
         const dataUser = profile._json;
         if (!dataUser.email_verified) {
           throw new customError(StatusCodes.BAD_REQUEST, "Email not verified");
@@ -60,6 +62,10 @@ passport.use(
         if (user.isBanned) {
           throw new customError(StatusCodes.FORBIDDEN, "USER_BANNED");
         }
+        const sessions = JSON.parse(user.session || "[]");
+        if (sessions.length === 3) {
+          await addBlacklistPromises(sessions[0]);
+        }
         const uniqueId = uuidv4();
         const payload = {
           id: user.id,
@@ -70,7 +76,7 @@ passport.use(
 
         const { accessToken, refreshToken } = functionService.createTokens(payload);
         await functionService.updateSessions(user,accessToken,refreshToken, uniqueId);
-        done(null, { accessToken, refreshToken, email: dataUser.email });
+        done(null, { accessToken, refreshToken, email: dataUser.email,id:user.id });
       } catch (error) {
         done(error);
       }

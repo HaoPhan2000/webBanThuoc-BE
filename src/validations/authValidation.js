@@ -7,6 +7,7 @@ const authValidation = {
     try {
       const Schema = Joi.object({
         email: Joi.string().email().required(),
+        captcha: Joi.string().required(),
       });
       await Schema.validateAsync(req.body);
       next();
@@ -27,7 +28,11 @@ const authValidation = {
           password: Joi.string()
             .min(8)
             .max(32)
-            .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,}$"))
+            .pattern(
+              new RegExp(
+                "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,}$"
+              )
+            )
             .required(),
         }).required(),
       });
@@ -46,6 +51,7 @@ const authValidation = {
       const Schema = Joi.object({
         email: Joi.string().email().required(),
         password: Joi.string().required(),
+        captcha: Joi.string().required(),
       });
       await Schema.validateAsync(req.body);
       next();
@@ -61,6 +67,7 @@ const authValidation = {
     try {
       const Schema = Joi.object({
         email: Joi.string().email().required(),
+        captcha: Joi.string().required(),
       });
       await Schema.validateAsync(req.body);
       next();
@@ -77,12 +84,16 @@ const authValidation = {
       const Schema = Joi.object({
         user_id: Joi.string().required(),
         token: Joi.string().required(),
-        password:  Joi.string()
-        .min(8)
-        .max(32)
-        .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,}$"))
-        .required(),
-        logoutAllDevice:Joi.boolean(),
+        password: Joi.string()
+          .min(8)
+          .max(32)
+          .pattern(
+            new RegExp(
+              "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,}$"
+            )
+          )
+          .required(),
+        logoutAllDevice: Joi.boolean(),
       });
       await Schema.validateAsync(req.body);
       next();

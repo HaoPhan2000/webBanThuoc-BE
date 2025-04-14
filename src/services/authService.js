@@ -1,4 +1,5 @@
-const User = require("../models/userModel");
+const User= require("../models/userModel");
+const sequelize = require("../config/configDB");
 const constants = require("../utils/constants");
 const Otp = require("../models/otpModel");
 const loginLogger = require("../loggers/loginLogger");
@@ -11,6 +12,7 @@ const env = require("../config/environment");
 const bcrypt = require("bcrypt");
 const { getIO } = require("../config/configSocketIO");
 const jwt = require("jsonwebtoken");
+const axios = require("axios");
 const redisService = require("../services/redisService");
 const saltRounds = 10;
 const authService = {
@@ -27,38 +29,42 @@ const authService = {
     }
   },
   confirmOtp: async ({ otp, dataUser }) => {
+    const transaction = await sequelize.transaction();
     try {
-      await otpService.verify({ otp, email: dataUser.email });
+      await otpService.verify({ otp, email: dataUser.email, transaction});
 
       const hashPassWord = await bcrypt.hash(dataUser.password, saltRounds);
 
-      await User.create({
-        email: dataUser.email,
-        passWord: hashPassWord,
-        loginType: constants.loginType.passWord,
-      });
-      await Otp.destroy({ where: { email: dataUser.email } });
+      await User.create(
+        {
+          email: dataUser.email,
+          passWord: hashPassWord,
+          loginType: constants.loginType.passWord,
+        },
+        { transaction }
+      );
+      await Otp.destroy({ where: { email: dataUser.email }, transaction });
+      await transaction.commit();
     } catch (error) {
+      await transaction.rollback();
       if (error?.EC === 102) {
-        await Otp.destroy({ where: { email: dataUser.email } });
+        try {
+          await Otp.destroy({ where: { email: dataUser.email } });
+        } catch (error) {
+          console.error("Failed to cleanup OTP:", err);
+        }
       }
       throw error;
     }
   },
   login: async (req) => {
+    const transaction = await sequelize.transaction();
     try {
-      const { email, password } = req.body;
-
-      const user = await User.findOne({ where: { email } });
-      if (!user) {
-        throw new customError(
-          StatusCodes.BAD_REQUEST,
-          "Invalid Email/Password"
-        );
-      }
-
-      const isMatchPassWord = await bcrypt.compare(password, user.passWord);
-      if (!isMatchPassWord) {
+      const { email, password, captcha } = req.body;
+      console.log(1)
+      const user = await User.findOne({ where: { email }, transaction });
+      console.log(2)
+      if (!user || !(await bcrypt.compare(password, user.passWord))) {
         throw new customError(
           StatusCodes.BAD_REQUEST,
           "Invalid Email/Password"
@@ -68,7 +74,12 @@ const authService = {
       if (user.isBanned) {
         throw new customError(StatusCodes.FORBIDDEN, "USER_BANNED");
       }
+      await authService.verifyRecaptcha(captcha);
 
+      const sessions = JSON.parse(user.session || "[]");
+      if (sessions.length === 3) {
+        await addBlacklistPromises(sessions[0]);
+      }
       const uniqueId = uuidv4();
 
       const payload = {
@@ -84,7 +95,8 @@ const authService = {
         user,
         accessToken,
         refreshToken,
-        uniqueId
+        uniqueId,
+        { transaction }
       );
       const ua = req.useragent;
       loginLogger.info({
@@ -102,9 +114,14 @@ const authService = {
         isBot: ua.isBot,
         timestamp: new Date().toISOString(),
       });
-
-      return { user: { email: user.email }, accessToken, refreshToken };
+      await transaction.commit();
+      return {
+        user: { email: user.email, id: user.id },
+        accessToken,
+        refreshToken,
+      };
     } catch (error) {
+      await transaction.rollback();
       throw error;
     }
   },
@@ -190,21 +207,7 @@ const authService = {
       if (logoutAllDevice) {
         const sessions = JSON.parse(user.session || "[]"); // Lấy danh sách sessions
         const blacklistPromises = sessions.map((element) => {
-          const decoded = jwt.decode(element.accessToken);
-          const exp = decoded?.exp;
-
-          // Nếu không có `exp`, bỏ qua token
-          if (!exp) {
-            return Promise.resolve();
-          }
-
-          // Tính TTL và thêm vào blacklist nếu token còn hạn
-          const ttl = exp - Math.floor(Date.now() / 1000);
-          if (ttl > 0) {
-            return redisService.addToBlacklist(element.accessToken, ttl);
-          }
-
-          return Promise.resolve();
+          addBlacklistPromises(element);
         });
 
         // Đợi tất cả các tác vụ thêm vào blacklist hoàn thành
@@ -221,29 +224,69 @@ const authService = {
     }
   },
   logout: async (req) => {
-    const user = await User.findOne({
-      where: { id: req?.user?.id },
-    });
-    if (!user) {
-      throw new customError(StatusCodes.BAD_REQUEST, "User not found");
-    }
-    const sessions = JSON.parse(user.session || "[]");
+    try {
+      const user = await User.findOne({
+        where: { id: req?.user?.id },
+      });
+      if (!user) {
+        throw new customError(StatusCodes.BAD_REQUEST, "User not found");
+      }
+      const sessions = JSON.parse(user.session || "[]");
 
-    const indexIdDevice = sessions.findIndex(
-      (item) => item.idDevice === req?.user?.idDevice
-    );
-    if (indexIdDevice === -1) {
-      throw new customError(
-        StatusCodes.BAD_REQUEST,
-        "Device not found in sessions"
+      const indexIdDevice = sessions.findIndex(
+        (item) => item.idDevice === req?.user?.idDevice
       );
-    }
-    sessions.splice(indexIdDevice, 1);
 
-    await user.update({ session: sessions });
+      if (indexIdDevice === -1) {
+        throw new customError(
+          StatusCodes.BAD_REQUEST,
+          "Device not found in sessions"
+        );
+      }
+      sessions.splice(indexIdDevice, 1);
+      await user.update({ session: sessions });
+    } catch (error) {
+      throw error;
+    }
+  },
+  verifyRecaptcha: async (captcha) => {
+    if (!captcha) {
+      throw new customError(StatusCodes.BAD_REQUEST, "Invalid captcha");
+    }
+
+    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${captcha}`;
+
+    try {
+      const { data } = await axios.post(verifyUrl);
+      if (!data.success) {
+        throw new customError(
+          StatusCodes.BAD_REQUEST,
+          "reCAPTCHA authentication failed"
+        );
+      }
+    } catch (error) {
+      throw error;
+    }
   },
 };
+const addBlacklistPromises = (element) => {
+  const decoded = jwt.decode(element.accessToken);
+  const exp = decoded?.exp;
 
+  // Nếu không có `exp`, bỏ qua token
+  if (!exp) {
+    return Promise.resolve();
+  }
+
+  // Tính TTL và thêm vào blacklist nếu token còn hạn
+  const ttl = exp - Math.floor(Date.now() / 1000);
+  if (ttl > 0) {
+    return redisService.addToBlacklist(element.accessToken, ttl);
+  }
+
+  return Promise.resolve();
+};
 async function notifyLogout(userId) {
   const io = getIO();
   const socketIds = await redisService.getAllSocketIdList(userId);
@@ -254,4 +297,4 @@ async function notifyLogout(userId) {
   });
   await redisService.deleteAllSocketId(userId);
 }
-module.exports = authService;
+module.exports = { authService, addBlacklistPromises };

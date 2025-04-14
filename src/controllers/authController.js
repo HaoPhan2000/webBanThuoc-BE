@@ -1,4 +1,4 @@
-const authService = require("../services/authService");
+const {authService} = require("../services/authService");
 const { StatusCodes } = require("http-status-codes");
 const otpService = require("../services/otpService");
 const sendEmailService = require("../services/EmailService");
@@ -6,14 +6,16 @@ const constants = require("../utils/constants");
 const cookie = require("../services/cookieService");
 const customError = require("../utils/customError");
 const loginLogger = require("../loggers/loginLogger");
+const env = require("../config/environment");
 const fs = require("fs");
 const authController = {
   register: async (req, res, next) => {
     try {
-      const { email } = req.body;
+      const { email, captcha } = req.body;
       await authService.register({
-        email: email,
+        email,
       });
+      await authService.verifyRecaptcha(captcha);
       const otp = await otpService.get(email);
       if (otp.code === 0) {
         throw new customError(
@@ -108,10 +110,10 @@ const authController = {
         90 * 24 * 60 * 60 * 1000
       );
       return res.redirect(
-        `http://localhost:5173/login?success=true&user=${req.user.email}`
+        `${env.DomainInterface}/login?success=true&user=${req.user.email}&id=${req.user.id}`
       );
     } catch (error) {
-      res.redirect(`http://localhost:5173/login?success=false`);
+      res.redirect(`${env.DomainInterface}/login?success=false`);
     }
   },
   refreshToken: async (req, res, next) => {
@@ -140,7 +142,8 @@ const authController = {
   },
   forgotPassword: async (req, res, next) => {
     try {
-      const { email } = req.body;
+      const { email, captcha } = req.body;
+      await authService.verifyRecaptcha(captcha);
       const link = await authService.forgotPassword({
         email,
       });
@@ -167,14 +170,13 @@ const authController = {
     }
   },
   resetPassword: async (req, res, next) => {
-    const { user_id, token, password,logoutAllDevice} = req.body;
-    console.log(logoutAllDevice)
+    const { user_id, token, password, logoutAllDevice } = req.body;
     try {
       await authService.resetPassword({
         user_id,
         token,
         password,
-        logoutAllDevice
+        logoutAllDevice,
       });
       res.status(StatusCodes.OK).json({
         message: "Password reset successful",
@@ -193,7 +195,7 @@ const authController = {
       next(error);
     }
   },
-  account: async (req, res,next) => {
+  account: async (req, res, next) => {
     try {
       res.status(StatusCodes.OK).json(req.user);
     } catch (error) {

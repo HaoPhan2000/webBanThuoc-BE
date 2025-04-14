@@ -22,5 +22,6 @@ const env = {
   Redis_Password: process.env.Redis_Password,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  RECAPTCHA_SECRET_KEY:process.env.RECAPTCHA_SECRET_KEY
 };
 module.exports = env;

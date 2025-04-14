@@ -12,13 +12,19 @@ const functionService = {
 
     return { accessToken, refreshToken };
   },
-  updateSessions: async (user, accessToken, refreshToken, uniqueId) => {
+  updateSessions: async (
+    user,
+    accessToken,
+    refreshToken,
+    uniqueId,
+    options = {}
+  ) => {
     const sessions = JSON.parse(user.session || "[]");
     if (sessions.length >= 3) {
       sessions.shift();
     }
     sessions.push({ idDevice: uniqueId, accessToken, refreshToken });
-    await user.update({ session: sessions });
+    await user.update({ session: sessions }, options);
   },
 };
 module.exports = functionService;

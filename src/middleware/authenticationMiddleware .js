@@ -7,8 +7,7 @@ const constants = require("../utils/constants");
 const authenticationMiddleware = async (req, res, next) => {
   try {
     console.log("authenticationMiddleware nè");
-    const { pathname } = new URL(req.originalUrl, `http://${req.headers.host}`);
-    console.log(pathname);
+    const  pathname = req.path
     if (
       constants.PUBLIC_PATH.some((item) => {
         return `${constants.BASE_URL_API_VERSION}${item}` === pathname;
@@ -32,6 +31,7 @@ const authenticationMiddleware = async (req, res, next) => {
         resolve(payload);
       });
     });
+    console.log(user)
     req.user = user;
     next();
   } catch (error) {
