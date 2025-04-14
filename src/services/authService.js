@@ -1,4 +1,4 @@
-const User= require("../models/userModel");
+const User = require("../models/userModel");
 const sequelize = require("../config/configDB");
 const constants = require("../utils/constants");
 const Otp = require("../models/otpModel");
@@ -31,7 +31,7 @@ const authService = {
   confirmOtp: async ({ otp, dataUser }) => {
     const transaction = await sequelize.transaction();
     try {
-      await otpService.verify({ otp, email: dataUser.email, transaction});
+      await otpService.verify({ otp, email: dataUser.email, transaction });
 
       const hashPassWord = await bcrypt.hash(dataUser.password, saltRounds);
 
@@ -61,9 +61,7 @@ const authService = {
     const transaction = await sequelize.transaction();
     try {
       const { email, password, captcha } = req.body;
-      console.log(1)
       const user = await User.findOne({ where: { email }, transaction });
-      console.log(2)
       if (!user || !(await bcrypt.compare(password, user.passWord))) {
         throw new customError(
           StatusCodes.BAD_REQUEST,

@@ -4,6 +4,7 @@ const customError = require("../utils/customError");
 const { StatusCodes } = require("http-status-codes");
 const authorizationMiddleware = (req, res, next) => {
   try {
+    console.log("authorizationMiddleware nè");
     const  pathname = req.path
     if (
       constants.PUBLIC_PATH.some(
@@ -31,8 +32,6 @@ const authorizationMiddleware = (req, res, next) => {
 
     next();
   } catch (error) {
-    console.log(`lỗi authorizationMiddleware:${error}`);
-
     next(error);
   }
 };

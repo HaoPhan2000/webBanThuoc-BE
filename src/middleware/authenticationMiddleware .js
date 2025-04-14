@@ -31,11 +31,9 @@ const authenticationMiddleware = async (req, res, next) => {
         resolve(payload);
       });
     });
-    console.log(user)
     req.user = user;
     next();
   } catch (error) {
-    console.log(`lỗi authenticationMiddleware:${error}`);
     next(error);
   }
 };
